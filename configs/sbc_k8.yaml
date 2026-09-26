@@ -1,0 +1,64 @@
+model:
+  name: llava-hf/llava-1.5-7b-hf
+  dtype: float16
+  device: cuda
+  attn_implementation: eager
+mask2former:
+  name: facebook/mask2former-swin-large-coco-panoptic
+  min_area_frac: 0.01
+  max_segments: 8
+vcd:
+  alpha: 1.0
+  beta: 0.1
+  noise_steps_pope: 999
+  noise_steps_mme: 500
+  num_diffusion_steps: 1000
+aif:
+  mask_ratios:
+  - 0.1
+  - 0.2
+  - 0.3
+  - 0.4
+  - 0.5
+  - 0.6
+  - 0.7
+  - 0.8
+  - 0.9
+  max_ratio: 0.5
+ours:
+  alpha: 1.0
+  beta: 0.1
+  lookahead: 8
+  pmi_alpha: 1.0
+  maskk_top_k: 2
+  msb_top_k: 2
+  msb_boost_factor: 1.8
+  sbc_tau_mid: 0.5
+  image_margin_thresh: 0.5
+  max_segments: 8
+opera:
+  alpha: 1.0
+  sigma: 50.0
+  k_window: 8
+  ncan: 5
+benchmarks:
+  pope:
+    data_dir: data/POPE
+    image_dir: data/coco/val2014
+    settings:
+    - random
+    - popular
+    - adversarial
+    prompt: Please answer the following question with yes or no. {question}
+    max_new_tokens: 64
+    n_runs: 5
+    sampling: direct
+  chair:
+    image_dir: data/coco/val2014
+    annotations_dir: data/coco/annotations
+    synonyms_file: data/chair/synonyms.txt
+    n_images: 1000
+    seed: 42
+    prompt: Please describe this image in detail.
+    max_new_tokens: 512
+    decoding: greedy

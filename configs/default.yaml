@@ -1,0 +1,70 @@
+# Shared experiment configuration
+# Hyperparameters here mirror the values reported in the source papers.
+
+model:
+  name: llava-hf/llava-1.5-7b-hf
+  dtype: float16
+  device: cuda
+  attn_implementation: eager   # required for output_attentions in LLaVA
+
+mask2former:
+  name: facebook/mask2former-swin-large-coco-panoptic
+  min_area_frac: 0.01
+  max_segments: 6
+
+# Visual Contrastive Decoding (VCD, CVPR 2024)
+vcd:
+  alpha: 1.0          # blend strength
+  beta: 0.1           # adaptive plausibility cutoff
+  noise_steps_pope: 999
+  noise_steps_mme: 500
+  num_diffusion_steps: 1000
+
+# Adaptive Information Flow (AIF, arXiv 2026)
+aif:
+  mask_ratios: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+  # Cap on the ratio actually picked.  See aif.py: with LLaVA-1.5-7B the raw
+  # "most distant from S0" criterion always saturates at 0.9, which masks
+  # 90% of visual tokens.  The AIF ablation Tab. 7 also compares "under the
+  # same masking ratio", suggesting their final pipeline uses a bounded
+  # ratio in practice.
+  max_ratio: 0.5
+
+# Ours v3 (SHAP-targeted VCD)
+ours:
+  alpha: 1.0
+  beta: 0.1
+  lookahead: 8     # universal — model self-terminates at EOS, so POPE effectively gets L=1
+  pmi_alpha: 1.0   # ours_pmi / ours_maskk: contrast strength
+  maskk_top_k: 2   # ours_maskk: # of SHAP-top segments to mean-colour mask for the v' term
+  # SBC defaults (paper §5):
+  msb_top_k: 2              # top-K segments boosted by MSB
+  msb_boost_factor: 1.8     # b (Eq. 4)
+  sbc_tau_mid: 0.5          # H gate threshold
+  image_margin_thresh: 0.5  # delta guard threshold
+
+# OPERA-Greedy (OTP only, beam retrospection omitted)
+opera:
+  alpha: 1.0       # penalty weight (Eq. 6)
+  sigma: 50.0      # scale-up factor for attention weights (Eq. 4)
+  k_window: 8      # local window size in decoded text tokens (Eq. 3)
+  ncan: 5          # # candidates to re-score per step (paper default Ncan=5)
+
+benchmarks:
+  pope:
+    data_dir: data/POPE
+    image_dir: data/coco/val2014
+    settings: [random, popular, adversarial]
+    prompt: "Please answer the following question with yes or no. {question}"
+    max_new_tokens: 64
+    n_runs: 5            # VCD reports mean ± std over 5 runs
+    sampling: direct     # direct post-softmax sampling per VCD
+  chair:
+    image_dir: data/coco/val2014
+    annotations_dir: data/coco/annotations
+    synonyms_file: data/chair/synonyms.txt
+    n_images: 1000       # paper default; switch to 500 via CLI for VCD CHAIR-500
+    seed: 42
+    prompt: "Please describe this image in detail."
+    max_new_tokens: 512
+    decoding: greedy
