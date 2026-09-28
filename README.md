@@ -146,6 +146,14 @@ python -m src.benchmarks.pope --method ours_sbc --setting random --limit 1000 \
   --config configs/sbc_k4.yaml
 ```
 
+## Raw model outputs
+
+The per-sample outputs and summaries behind every table in the paper (18 MB
+zip, no images) are attached to the
+[`v1.0-camera-ready` release](https://github.com/JaeGwang98/mass-tail-entropy/releases/tag/v1.0-camera-ready)
+as `mass-tail-entropy-raw-outputs.zip`. Its `README.md` maps each paper
+table to the run directories that produced it.
+
 ## Hyperparameters (paper defaults)
 
 | Param              | Value | Role                                      |
