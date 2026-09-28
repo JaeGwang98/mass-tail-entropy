@@ -28,7 +28,7 @@ import pandas as pd
 import torch
 from PIL import Image
 
-from ..utils.common import PROJECT_ROOT, load_config
+from ..utils.common import PROJECT_ROOT, load_config, set_seed
 from .pope import make_decoder, parse_yes_no
 
 # MME hallucination subset -- the four object/attribute subtasks, following
@@ -108,6 +108,7 @@ def evaluate(method: str, wrapper, cfg: dict, segmenter=None,
     if limit is not None:
         df = df.iloc[:limit].reset_index(drop=True)
     decoder = make_decoder(method, wrapper, cfg, segmenter=segmenter)
+    set_seed(1234)  # as in pope.py / chair.py; no effect on greedy decoding
 
     raw, t0 = [], time.time()
     for i, row in df.iterrows():

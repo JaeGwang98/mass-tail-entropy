@@ -62,7 +62,8 @@ data/POPE/                POPE random / popular / adversarial splits
 data/AMBER/               AMBER benchmark
 ```
 
-A single 24 GB GPU (RTX 3090 / 4090) is enough for every 7B run (fp16).
+A single 24 GB GPU (RTX 3090 / 4090) is enough for every 7B/8B run. LLaVA-1.5
+runs in fp16; the Qwen and InternVL wrappers switch to bf16.
 
 ## Running
 
@@ -80,7 +81,9 @@ python -m src.benchmarks.mme   --method ours_sbc \
 ```
 
 Use `--model Qwen/Qwen2.5-VL-7B-Instruct` for the Qwen2.5-VL rows. All runs
-use one shared configuration with no per-backbone tuning.
+use one shared configuration with no per-backbone tuning. `--method vcd` on
+POPE averages `n_runs` sampling runs (5 in `configs/default.yaml`, used for
+LLaVA); the Qwen VCD row was a single run (`--n-runs 1`).
 
 ## Method names
 
@@ -98,7 +101,7 @@ cost table.
 | `vcd_greedy`        | VCD under greedy decoding (MME table)                            |
 | `opera`             | OPERA, greedy adaptation: over-trust penalty only, beam retrospection omitted |
 | `aif`               | AIF, reproduced from the paper (selected mask ratio capped at 0.5) |
-| `pai`               | PAI                                                              |
+| `pai`               | PAI (development baseline, not reported in the paper)            |
 | `ours_msb_sent`     | MSB-only                                                         |
 | `ours_pmi`          | PMI-only                                                         |
 | `ours_sbc`          | **SBC, main tables** (three-condition router)                    |
@@ -115,7 +118,13 @@ Not every method is exposed by every benchmark script; run
 All commands run from the repository root and write under `results/`.
 
 ```bash
-# H distributions (mass-tail table, further backbones, SAM segmenter)
+# Mass-tail table (dominant tail, Err / Corr): CHAIR and POPE rows
+python scripts/h_vs_hallu_anymodel.py llava-hf/llava-1.5-7b-hf 300 600
+# MME rows: hallucination subset (existence / count / position / color) of
+# results/mme_halluc_<model>.json
+python scripts/mme_halluc_subset.py results/mme_halluc_llava-1-5-7b-hf.json
+
+# H distributions (further backbones, SAM segmenter, K ablation)
 python scripts/h_distribution_anymodel.py --model llava-hf/llava-1.5-7b-hf \
   --out results/h_dist_llava7b.json                   # add --segmenter sam, --max-segments 4|8,
                                                       # --load-8bit for LLaVA-1.5-13B;
@@ -134,9 +143,14 @@ python -m scripts.compare_loo_exact results/exactshap/<cell_dir>
 python scripts/caption_quality.py                     # length, distinct-n, repetition (CPU)
 python scripts/clipscore_quality.py                   # sentence-level CLIPScore
 
-# Latency (LLaVA-1.5-7B)
+# Latency (LLaVA-1.5-7B). The SBC rows of the cost table come from one session:
+python scripts/measure_latency.py --n 200 --methods baseline_greedy vcd_greedy aif \
+  ours_sbc ours_no_h ours_lazy ours_lazy_attn --out results/latency_pope_e1e5.csv
+python scripts/measure_latency_chair.py --n 50 --methods baseline vcd aif \
+  ours_sbc ours_lazy ours_lazy_attn --out results/latency_chair_e1e5.csv
+# Remaining baseline rows (OPERA, MSB-only, PMI-only) use the script defaults:
 python scripts/measure_latency.py --n 50              # POPE, s/question
-python scripts/measure_latency_chair.py --n 20        # CHAIR, s/image (incl. ours_lazy, ours_lazy_attn)
+python scripts/measure_latency_chair.py --n 20        # CHAIR, s/image
 
 # AMBER
 python scripts/run_amber.py --task gen  --method ours_sbc --out-dir results/amber_gen_sbc
@@ -146,12 +160,20 @@ python scripts/run_amber.py --task disc --method ours_sbc --disc-file existence 
 # Segment-count ablation (K = 4 / 8)
 python -m src.benchmarks.pope --method ours_sbc --setting random --limit 1000 \
   --config configs/sbc_k4.yaml
+python -m src.benchmarks.chair --method ours_sbc --n-images 300 \
+  --config configs/sbc_k4.yaml
 ```
+
+The SAM segmenter-swap *decoding* cells (CHAIR_I with SAM vs Mask2Former under
+MSB) come from development runs whose per-sample outputs were not retained,
+and `src/benchmarks/chair.py` has no SAM option, so they cannot be reproduced
+from this release. The SAM *diagnostic* (H distribution) can:
+`python scripts/h_distribution_anymodel.py --segmenter sam ...`.
 
 ## Raw model outputs
 
-The per-sample outputs and summaries behind every table in the paper (18 MB
-zip, no images) are attached to the
+The per-sample outputs and summaries behind the paper's tables (18 MB zip, no
+images; exceptions are listed in its `README.md`) are attached to the
 [`v1.0-camera-ready` release](https://github.com/JaeGwang98/mass-tail-entropy/releases/tag/v1.0-camera-ready)
 as `mass-tail-entropy-raw-outputs.zip`. Its `README.md` maps each paper
 table to the run directories that produced it.
@@ -164,7 +186,7 @@ table to the run directories that produced it.
 | MSB top-$k$        | 2     | segments boosted by MSB                   |
 | $b$                | 1.8   | MSB boost factor                          |
 | PMI $\alpha$, $\beta$ | 1.0, 0.1 | VCD defaults (not tuned)             |
-| $\delta$           | 0.5   | on-image margin guard                     |
+| $\delta$           | 0.5   | margin guard: greedy if the first-token top-1 minus top-2 probability is $> \delta$, else PMI |
 | $\tau_{\mathrm{mid}}$ | 0.5 | $H$ threshold (three-condition router only) |
 
 ## Citation
