@@ -118,25 +118,30 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--segmenter", default="m2f", choices=["m2f", "sam"])
     ap.add_argument("--max-segments", type=int, default=6)
+    ap.add_argument("--device", default="cuda",
+                    help="cuda (default) or cpu (smoke tests; forces float32)")
     args = ap.parse_args()
 
     cfg = load_config(None)
     cfg["model"]["name"] = args.model
+    dtype = (torch.float32 if args.device == "cpu"
+             else getattr(torch, cfg["model"]["dtype"]))
 
     from src.models import build_wrapper
     print(f"loading model: {args.model} (8bit={args.load_8bit}) ...",
           flush=True)
+    extra = {} if args.device == "cuda" else {"device": args.device}
     wrapper = build_wrapper(
         model_name=args.model,
-        dtype=getattr(torch, cfg["model"]["dtype"]),
+        dtype=dtype,
         attn_implementation=cfg["model"]["attn_implementation"],
-        load_in_8bit=args.load_8bit)
+        load_in_8bit=args.load_8bit, **extra)
     if args.segmenter == "sam":
         from src.utils.segmentation import SAMSegmenter
-        seg = SAMSegmenter(dtype=getattr(torch, cfg["model"]["dtype"]))
+        seg = SAMSegmenter(dtype=dtype)
     else:
         seg = PanopticSegmenter(model_name=cfg["mask2former"]["name"],
-                                dtype=getattr(torch, cfg["model"]["dtype"]))
+                                device=args.device, dtype=dtype)
 
     rng = np.random.default_rng(args.seed)
     sources = list(iter_chair(cfg, args.n_chair,

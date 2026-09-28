@@ -14,8 +14,15 @@ import torch
 def build_wrapper(model_name: str, dtype=torch.float16,
                   attn_implementation: str = "eager",
                   load_in_8bit: bool = False,
-                  device_map: str = None):
+                  device_map: str = None,
+                  device: str = None):
     name = model_name.lower()
+    if "internvl" in name:
+        from .internvl_wrapper import InternVLWrapper
+        return InternVLWrapper(model_name=model_name, device=device,
+                               dtype=dtype,
+                               attn_implementation=attn_implementation,
+                               load_in_8bit=load_in_8bit)
     if "qwen2.5-vl" in name or "qwen2_5_vl" in name or "qwen2.5vl" in name:
         from .qwen2_5vl_wrapper import Qwen2_5VLWrapper
         return Qwen2_5VLWrapper(model_name=model_name, dtype=dtype,

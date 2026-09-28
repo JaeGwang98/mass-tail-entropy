@@ -33,7 +33,7 @@ configs/
   default.yaml                  shared hyperparameters (paper defaults)
   sbc_k4.yaml / sbc_k8.yaml     segment-count ablation (K = 4 / 8)
 src/
-  models/                       LLaVA-1.5 / Qwen2-VL / Qwen2.5-VL wrappers
+  models/                       LLaVA-1.5 / Qwen2-VL / Qwen2.5-VL / InternVL3 wrappers
   utils/segmentation.py         Mask2Former panoptic segmentation + mean-colour occlusion
   decoding/
     ours_sbc.py                 SBC (all router variants, see --method below)
@@ -118,7 +118,9 @@ All commands run from the repository root and write under `results/`.
 # H distributions (mass-tail table, further backbones, SAM segmenter)
 python scripts/h_distribution_anymodel.py --model llava-hf/llava-1.5-7b-hf \
   --out results/h_dist_llava7b.json                   # add --segmenter sam, --max-segments 4|8,
-                                                      # --load-8bit for LLaVA-1.5-13B
+                                                      # --load-8bit for LLaVA-1.5-13B;
+                                                      # --model OpenGVLab/InternVL3-8B-hf for the
+                                                      # third family (single 448x448 tile)
 python scripts/sbc_h_distribution.py 200              # SBC routing / H on POPE (200 q per split)
 python scripts/amber_h_distribution.py --out results/amber_h_dist_llava7b.json
 
