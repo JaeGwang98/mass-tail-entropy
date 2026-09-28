@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Gate-validation analysis for SBC.
 
-Answers the reviewer question "is the SHAP gate actually doing work, or is
+Answers the reviewer question "is the attribution-entropy gate actually doing work, or is
 SBC ~= always-MSB / always-PMI?" by bracketing SBC between two reference
 gates computed offline from the per-item raw logs:
 

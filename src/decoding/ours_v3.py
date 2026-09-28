@@ -1,9 +1,9 @@
-"""SHAP-Targeted Visual Contrastive Decoding (Ours, v3).
+"""Attribution-Targeted Visual Contrastive Decoding (Ours, v3).
 
 Pipeline (mirrors 방법론.md):
   Step 0:  Mask2Former-Swin-L panoptic segmentation -> up to K segments.
   Step 1:  Lookahead - greedy first L tokens given (x, v).
-  Step 2:  Per-segment SHAP via leave-one-out occlusion (mean-color fill):
+  Step 2:  Per-segment LOO attribution via leave-one-out occlusion (mean-color fill):
               phi_i = log p(span | x, v) - log p(span | x, v \\ s_i)
            batched as K parallel forwards.
   Step 3:  v' = v with segment s_{i*} masked (i* = argmax phi).
@@ -24,7 +24,7 @@ from .vcd import _apc_filter
 
 
 # ---------------------------------------------------------------------------
-# Step 1+2: greedy lookahead + per-segment LOO SHAP
+# Step 1+2: greedy lookahead + per-segment LOO attribution
 # ---------------------------------------------------------------------------
 @torch.no_grad()
 def _greedy_lookahead(wrapper: LlavaWrapper, input_ids, pixel_values,
@@ -142,7 +142,7 @@ def ours_v3_decode(wrapper: LlavaWrapper, segmenter: PanopticSegmenter,
         from .baseline import greedy_decode
         return greedy_decode(wrapper, image, question, max_new_tokens)
 
-    # ---- Step 2: per-segment SHAP -----------------------------------------
+    # ---- Step 2: per-segment LOO attribution -----------------------------------------
     i_star = _shap_top_segment(wrapper, image, segments, input_ids,
                                pixel_v, attn_mask, span)
 

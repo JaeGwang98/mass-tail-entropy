@@ -157,7 +157,7 @@ class LlavaWrapper:
         LLaVA's image-token count is fixed (576) and content-independent, so
         the same ``prompt_ids`` are reused for every image and only
         ``pixel_values`` is swapped — the K images are stacked on the batch
-        axis and run in chunked forwards (the original batched-SHAP path)."""
+        axis and run in chunked forwards (the original batched-occlusion path)."""
         if not span:
             return torch.zeros(len(images), device=self.device)
         pix_list = []

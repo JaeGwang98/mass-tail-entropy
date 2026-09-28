@@ -29,7 +29,8 @@ from src.utils.common import load_config, set_seed, PROJECT_ROOT  # noqa: E402
 from src.benchmarks.chair import (make_decoder, CHAIR_PROMPT,     # noqa: E402
                                   sample_image_ids)
 
-SEG_METHODS = ("ours_sbc", "ours_sbc_v2", "ours_msb_sent", "ours_pmi_guard")
+SEG_METHODS = ("ours_sbc", "ours_sbc_v2", "ours_msb_sent", "ours_pmi_guard",
+               "ours_lazy", "ours_lazy_attn")
 
 
 def main():
@@ -39,7 +40,7 @@ def main():
     ap.add_argument("--methods", nargs="+",
                     default=["baseline", "vcd", "aif",
                              "opera", "ours_msb_sent", "ours_pmi",
-                             "ours_sbc"])
+                             "ours_sbc", "ours_lazy", "ours_lazy_attn"])
     ap.add_argument("--out", default="results/diagnostics_latency_chair.csv")
     ap.add_argument("--seed", type=int, default=1234)
     args = ap.parse_args()

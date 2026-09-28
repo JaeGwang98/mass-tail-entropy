@@ -1,11 +1,18 @@
 # Versions used for the paper's experiments.
 torch==2.10.0
 torchvision==0.25.0
-transformers==5.4.0
+transformers==5.4.0        # also provides Mask2Former, SAM (mask-generation) and CLIP
 accelerate==1.13.0
 numpy==2.4.4
 scipy==1.17.1
 pillow==12.1.1
 PyYAML==6.0.3
-pycocotools==2.0.11
-segment-anything==1.0
+nltk==3.9.4                # AMBER lemmatisation, CLIPScore sentence split
+
+# Analysis scripts
+pycocoevalcap==1.2         # scripts/caption_quality.py
+pandas==2.3.3
+matplotlib==3.10.8
+
+# Optional
+bitsandbytes==0.49.2       # 8-bit LLaVA-1.5-13B diagnostic (--load-8bit)

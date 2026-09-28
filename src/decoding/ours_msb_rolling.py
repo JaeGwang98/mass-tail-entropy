@@ -1,18 +1,18 @@
-"""Rolling-SHAP MSB — re-measure SHAP at sentence boundaries.
+"""Rolling-attribution MSB — re-measure the LOO attribution at sentence boundaries.
 
 Motivation
 ----------
-MSB measures SHAP once on the first L tokens, then locks the boost positions
+MSB measures the LOO attribution once on the first L tokens, then locks the boost positions
 for the entire generation.  This means later sentences (which often describe
 different objects) keep getting boost on the wrong (early) segments.
 
-Rolling MSB: at each sentence-ending token (".", "!", "?"), re-measure SHAP
+Rolling MSB: at each sentence-ending token (".", "!", "?"), re-measure the LOO attribution
 based on the next L tokens and update the boost positions.  Cap the number of
 re-measurements to control cost.
 
 Cost (1000 imgs CHAIR estimate):
-  - Initial SHAP: K+1 = 7 forwards (~prefill cost)
-  - Each re-measurement: 1 lookahead-prefill + K+1 SHAP forwards = ~8 prefills
+  - Initial LOO attribution: K+1 = 7 forwards (~prefill cost)
+  - Each re-measurement: 1 lookahead-prefill + K+1 occlusion forwards = ~8 prefills
   - With max_remeasures=2: ~16 extra prefill-equiv
   - Total: ~2x current MSB wall clock (~150 min instead of ~78 min)
 """
@@ -46,7 +46,7 @@ def _greedy_lookahead_until_period(wrapper, input_ids, pixel_values,
                                     attn_mask, max_steps: int = 32,
                                     min_steps: int = 4) -> List[int]:
     """Greedy generate up to the next sentence-ending token (capped at
-    ``max_steps``).  Used for Rolling MSB re-measurement so SHAP is computed
+    ``max_steps``).  Used for Rolling MSB re-measurement so the LOO attribution is computed
     over the FULL upcoming sentence rather than a fixed 8-token snippet.
 
     A min_steps floor avoids degenerate empty spans when the first generated
@@ -94,10 +94,10 @@ def ours_msb_rolling_decode(wrapper: LlavaWrapper,
                             max_remeasures: int = 2,
                             re_lookahead_max: int = 32,
                             re_lookahead_min: int = 4) -> str:
-    """Rolling-SHAP MSB.
+    """Rolling-attribution MSB.
 
     Args:
-        max_remeasures: max number of mid-generation SHAP re-measurements
+        max_remeasures: max number of mid-generation LOO attribution re-measurements
             triggered by sentence-ending tokens.  0 reduces to vanilla MSB.
         re_lookahead_max: cap on tokens generated for each re-measurement
             lookahead (greedy until next period or this cap).
@@ -127,7 +127,7 @@ def ours_msb_rolling_decode(wrapper: LlavaWrapper,
         from .baseline import greedy_decode
         return greedy_decode(wrapper, image, question, max_new_tokens)
 
-    # Step 2: initial SHAP
+    # Step 2: initial LOO attribution
     phis = _shap_phis(wrapper, image, segments, input_ids, pixel_v, attn_mask,
                       span)
     boost_pos = _select_boost_positions(phis, segments, visual_pos, top_k,

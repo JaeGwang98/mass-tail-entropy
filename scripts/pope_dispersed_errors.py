@@ -23,7 +23,11 @@ sys.path.insert(0, str(ROOT))
 from src.models.llava_wrapper import LlavaWrapper                # noqa: E402
 from src.utils.segmentation import PanopticSegmenter             # noqa: E402
 from src.utils.common import load_config                         # noqa: E402
-from src.decoding.ours_maskk import ours_maskk_decode           # noqa: E402
+try:                                                             # noqa: E402
+    from src.decoding.ours_maskk import ours_maskk_decode
+except ImportError as e:  # early prototype, not part of this release
+    raise SystemExit("pope_dispersed_errors.py needs the ours_maskk prototype, "
+                     "which is not included in this release") from e
 from src.decoding.ours_pmi import ours_pmi_decode               # noqa: E402
 from src.benchmarks.pope import POPE_QUESTION_SUFFIX, parse_yes_no  # noqa: E402
 

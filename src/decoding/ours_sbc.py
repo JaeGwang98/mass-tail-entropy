@@ -1,13 +1,13 @@
-r"""SBC — SHAP-Guided Bimodal Calibration  (v3 gate).
+r"""SBC — Segment-Based Conditioning  (v3 gate).
 
-One SHAP measurement, one principled rule (no baseline / "do-nothing" route,
+One LOO attribution measurement, one principled rule (no baseline / "do-nothing" route,
 no benchmark detection):
 
   PMI  if  H >= tau_mid  AND  span(v) == span(blank)
-           (SHAP attribution is flat  AND  the image-free answer is identical
+           (LOO attribution is flat  AND  the image-free answer is identical
             -> the prediction is prior-driven)
   MSB  otherwise
-           (redistribute attention over the top-K SHAP segments — behaves like
+           (redistribute attention over the top-k attribution segments — behaves like
             gate-free MSB-sent, which is what works on free-form captioning)
 
   greedy fallback if < 2 segments or no usable visual tokens.
@@ -19,7 +19,7 @@ closed-form yes/no answer that the model gives even with a blank image -> PMI
 free-form/closed-form discriminator, so this is one rule rather than per-task
 logic.
 
-Cost: 1 (lookahead) + K (SHAP) prefills, then either
+Cost: 1 (lookahead) + K (occlusion) prefills, then either
   - MSB: 1 boosted prefill + greedy gen, or
   - PMI: 1 blank prefill (the blank-agreement check) + a 2-cache contrastive
     gen that *reuses* the lookahead prefill (real arm) and the blank prefill
@@ -72,7 +72,7 @@ def _kv_clone(pkv):
 def _lookahead_with_logp(wrapper, input_ids, pixel_values, attn_mask,
                          use_sentence: bool, lookahead: int, max_steps: int = 32):
     """Greedy lookahead that also returns the teacher-forced log p(span | x, v)
-    accumulated step-by-step (so SHAP need not re-forward the original image)
+    accumulated step-by-step (so the attribution need not re-forward the original image)
     *and* a pristine ``(prompt_logits, prompt_pkv)`` snapshot of the prefill at
     the prompt end — PMI generation uses the same unboosted prefill for its
     real-image arm, so it can reuse this instead of recomputing it."""
@@ -386,7 +386,7 @@ def ours_sbc_decode(wrapper: LlavaWrapper, segmenter: PanopticSegmenter,
         else:
             out, route = _msb()
     elif gate_version == "logit_h":
-        # App K ablation: replace SHAP-H with top-K logit entropy.
+        # App K ablation: replace the attribution entropy H with top-K logit entropy.
         top = v_prompt_logits[0].float().topk(100).values
         p = torch.softmax(top, dim=-1)
         H_alt = float(-(p * torch.log(p.clamp_min(1e-12))).sum().item() / math.log(100))
@@ -398,7 +398,7 @@ def ours_sbc_decode(wrapper: LlavaWrapper, segmenter: PanopticSegmenter,
         else:
             out, route = _msb()
     elif gate_version == "attn_h":
-        # App K ablation: replace SHAP-H with last-layer attention entropy
+        # App K ablation: replace the attribution entropy H with last-layer attention entropy
         # aggregated to the same panoptic segments.
         out_a = wrapper.prefill(input_ids, pixel_v, attn, output_attentions=True)
         last = out_a.attentions[-1][0].mean(dim=0)[-1].float()

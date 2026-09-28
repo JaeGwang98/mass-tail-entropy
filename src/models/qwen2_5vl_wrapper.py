@@ -1,5 +1,5 @@
 """Qwen2.5-VL-7B wrapper exposing the same interface as ``LlavaWrapper`` so the
-SHAP / MSB / PMI decoders run unchanged.
+LOO-attribution / MSB / PMI decoders run unchanged.
 
 Architecture is identical to Qwen2-VL (dynamic resolution, M-RoPE, same patch
 merging) with the following differences handled here:
@@ -137,7 +137,7 @@ class Qwen2_5VLWrapper:
             kwargs["image_grid_thw"] = thw
         if mm is not None:
             # mm_token_type_ids must match input_ids length; the stash covers
-            # the prompt. If a span was appended (lookahead/SHAP), pad type 0.
+            # the prompt. If a span was appended (lookahead/occlusion), pad type 0.
             if mm.shape[1] != input_ids.shape[1]:
                 pad = torch.zeros(mm.shape[0],
                                   input_ids.shape[1] - mm.shape[1],

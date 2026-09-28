@@ -1,12 +1,12 @@
-"""SHAP-Attention Amplification (Ours, v4 — pilot).
+"""Attribution-Targeted Attention Amplification (Ours, v4 — pilot).
 
 Difference from v3:
-  v3 builds a counterfactual image v' by mean-color masking the top-SHAP
+  v3 builds a counterfactual image v' by mean-color masking the top-attribution
   segment, then VCD-blends logits from v vs v'.  In greedy mode the small
   logit shift cannot move argmax through APC -> ours degenerates to baseline.
 
-  v4 keeps v3's SHAP segment selection but instead of building v', it
-  *amplifies the text->(top-SHAP visual tokens) attention* via a 4-D causal
+  v4 keeps v3's attribution-based segment selection but instead of building v', it
+  *amplifies the text->(top-attribution visual tokens) attention* via a 4-D causal
   mask boost (+log gamma).  Single forward, no APC, no blend.  This makes
   the logit move at the score level (pre-softmax), which is robust to
   greedy decoding.
@@ -127,7 +127,7 @@ def ours_v4_decode(wrapper: LlavaWrapper, segmenter: PanopticSegmenter,
         from .baseline import greedy_decode
         return greedy_decode(wrapper, image, question, max_new_tokens)
 
-    # --- Step 2: SHAP top segment ------------------------------------------
+    # --- Step 2: top-attribution segment ------------------------------------------
     i_star = _shap_top_segment(wrapper, image, segments, input_ids,
                                pixel_v, attn_mask, span)
     boost_pos = _segment_to_visual_token_indices(segments[i_star].mask,

@@ -1,4 +1,4 @@
-"""Mask2Former panoptic segmentation wrapper for the v3 SHAP pipeline.
+"""Mask2Former panoptic segmentation wrapper for the LOO-attribution pipeline.
 
 The wrapper returns a list of binary masks (one per accepted segment) at the
 *original* image resolution.  Segments smaller than ``min_area_frac`` of the

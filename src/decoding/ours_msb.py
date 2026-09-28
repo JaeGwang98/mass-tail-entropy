@@ -1,14 +1,14 @@
-"""Multi-Segment Boost (M-SB) — gate-free SHAP-based decoder.
+"""Multi-Segment Boost (M-SB) — gate-free attribution-based decoder.
 
 Idea
 ----
-Hallucinations cluster in over-concentrated SHAP regimes (CHAIR ~70% in 과집중).
-v4 boosts only top-1 SHAP segment; M-SB boosts top-K (K=2,3) so the model
+Hallucinations cluster in over-concentrated attribution regimes (CHAIR ~70% in 과집중).
+v4 boosts only top-1 attribution segment; M-SB boosts top-K (K=2,3) so the model
 cannot rely on a single visual cue.
 
 Cost
 ----
-- Lookahead SHAP: K forwards (same as v3)
+- Lookahead LOO attribution: K forwards (same as v3)
 - Generation: 1 forward / token (cheaper than v3's 2)
 
 Note
@@ -56,7 +56,7 @@ def _topk_diverse(phis: np.ndarray, segments: Sequence[Segment],
 
 def _shap_phis(wrapper, image, segments, prompt_ids, pixel_values, attn_mask,
                span):
-    """Compute LOO SHAP phi per segment (sequential — K+1 forwards)."""
+    """Compute LOO attribution phi per segment (sequential — K+1 forwards)."""
     base_lp = _logp_span_under_image(wrapper, prompt_ids, pixel_values,
                                      attn_mask, span)
     phis = []
@@ -75,7 +75,7 @@ def _shap_phis(wrapper, image, segments, prompt_ids, pixel_values, attn_mask,
 @torch.no_grad()
 def _shap_phis_batched(wrapper, image, segments, prompt_ids, pixel_values,
                        attn_mask, span, max_batch: int = 8, base_lp=None):
-    """LOO SHAP phi via leave-one-segment-out occlusion.
+    """LOO attribution phi via leave-one-segment-out occlusion.
 
     The model-specific occlusion forward is delegated to
     ``wrapper.logp_spans(images, prompt_ids, span)`` so this stays
@@ -115,7 +115,7 @@ def ours_msb_decode(wrapper: LlavaWrapper, segmenter: PanopticSegmenter,
         boost_factor: gamma — multiplicative attention boost on chosen segments.
         top_k: number of segments to boost (K=1 reduces to v4).
         nms_iou: IoU threshold for NMS-based diversity in top-K selection.
-        lookahead: number of tokens for SHAP measurement (model self-terminates
+        lookahead: number of tokens for the LOO attribution measurement (model self-terminates
             on EOS, so a single value works for both POPE and CHAIR).
     """
     enc = wrapper.prepare_inputs(image, question)
@@ -149,7 +149,7 @@ def ours_msb_decode(wrapper: LlavaWrapper, segmenter: PanopticSegmenter,
         from .baseline import greedy_decode
         return greedy_decode(wrapper, image, question, max_new_tokens)
 
-    # Step 2: per-segment SHAP.  Use the wrapper-delegated occlusion forward
+    # Step 2: per-segment LOO attribution.  Use the wrapper-delegated occlusion forward
     # (_shap_phis_batched) rather than the raw wrapper.model() path so that
     # Qwen2.5-VL's image_grid_thw is threaded through — the sequential
     # _shap_phis built pixel_values without grid_thw and crashed in

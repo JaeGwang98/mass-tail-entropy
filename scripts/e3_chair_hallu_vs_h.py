@@ -1,7 +1,7 @@
 """E3 — CHAIR per-caption hallucination rate as a function of H.
 
 For each of N CHAIR images:
-  1. Measure SBC-style H (Mask2Former -> SHAP -> normalized entropy).
+  1. Measure SBC-style H (Mask2Former -> LOO attribution -> normalised entropy).
   2. Generate baseline greedy caption (full 128 tokens).
   3. Parse caption objects with the CHAIR matcher.
   4. Compute per-caption hallucination flag and per-caption CI ratio.

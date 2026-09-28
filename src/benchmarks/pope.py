@@ -75,12 +75,20 @@ def compute_metrics(preds: Sequence[str], labels: Sequence[str]) -> Dict[str, fl
 # ---------------------------------------------------------------------------
 # Decoder dispatcher
 # ---------------------------------------------------------------------------
+# Early prototypes whose decoder modules are not part of this release.
+_UNRELEASED_METHODS = ("ours_maskk", "ours_penalty", "ours_penalty_sent",
+                       "ours_combined", "ssl")
+
 def make_decoder(method: str, wrapper: LlavaWrapper, cfg: dict,
                  segmenter=None) -> Callable:
     vc = cfg["vcd"]
     ours = cfg["ours"]
     aifc = cfg["aif"]
     max_new = cfg["benchmarks"]["pope"]["max_new_tokens"]
+
+    if method in _UNRELEASED_METHODS:
+        raise ValueError(f"method {method!r} is an early prototype that is not "
+                         "part of the paper and is not included in this release")
 
     if method == "baseline":
         return lambda img, q: sample_decode(wrapper, img, q,
@@ -142,13 +150,13 @@ def make_decoder(method: str, wrapper: LlavaWrapper, cfg: dict,
         return lambda img, q: ours_sbc_decode(
             wrapper, segmenter, img, q,
             max_new_tokens=max_new,
-            boost_factor=ours.get("msb_boost_factor", 1.5),
+            boost_factor=ours.get("msb_boost_factor", 1.8),
             top_k=ours.get("msb_top_k", 2),
             pmi_alpha=ours.get("pmi_alpha", 1.0), beta=ours.get("beta", 0.1),
             gate_version=gv,
             tau_mid=ours.get("sbc_tau_mid", 0.5),
             tau_lo=ours.get("sbc_tau_lo", 0.25), tau_hi=ours.get("sbc_tau_hi", 0.75),
-            image_margin_thresh=ours.get("image_margin_thresh", 0.0),
+            image_margin_thresh=ours.get("image_margin_thresh", 0.5),
             max_segments=ours.get("max_segments", 6),
             return_route=True)
     if method == "ours":
@@ -174,7 +182,7 @@ def make_decoder(method: str, wrapper: LlavaWrapper, cfg: dict,
         from ..decoding.ours_msb import ours_msb_decode
         if segmenter is None:
             raise ValueError("ours_msb requires a PanopticSegmenter")
-        boost = ours.get("msb_boost_factor", 1.5)
+        boost = ours.get("msb_boost_factor", 1.8)
         topk = ours.get("msb_top_k", 2)
         return lambda img, q: ours_msb_decode(wrapper, segmenter, img, q,
                                               max_new_tokens=max_new,
@@ -184,7 +192,7 @@ def make_decoder(method: str, wrapper: LlavaWrapper, cfg: dict,
         from ..decoding.ours_msb_rolling import ours_msb_rolling_decode
         if segmenter is None:
             raise ValueError("ours_msb_rolling requires a PanopticSegmenter")
-        boost = ours.get("msb_boost_factor", 1.5)
+        boost = ours.get("msb_boost_factor", 1.8)
         topk = ours.get("msb_top_k", 2)
         max_re = ours.get("msb_max_remeasures", 2)
         return lambda img, q: ours_msb_rolling_decode(
@@ -208,7 +216,7 @@ def make_decoder(method: str, wrapper: LlavaWrapper, cfg: dict,
         from ..decoding.ours_msb import ours_msb_decode
         if segmenter is None:
             raise ValueError("ours_msb_sent requires a PanopticSegmenter")
-        boost = ours.get("msb_boost_factor", 1.5)
+        boost = ours.get("msb_boost_factor", 1.8)
         topk = ours.get("msb_top_k", 2)
         return lambda img, q: ours_msb_decode(
             wrapper, segmenter, img, q,
@@ -232,7 +240,7 @@ def make_decoder(method: str, wrapper: LlavaWrapper, cfg: dict,
         from ..decoding.ours_combined import ours_combined_decode
         if segmenter is None:
             raise ValueError("ours_combined requires a PanopticSegmenter")
-        boost = ours.get("msb_boost_factor", 1.5)
+        boost = ours.get("msb_boost_factor", 1.8)
         pen = ours.get("penalty_factor", 0.5)
         gate = ours.get("penalty_gate_threshold", 0.05)
         topk = ours.get("msb_top_k", 2)
@@ -398,7 +406,7 @@ def main():
     ap.add_argument("--device-map", default=None,
                     help="HF device_map for fp16 multi-GPU split (e.g., 'auto').")
     ap.add_argument("--boost-factor", type=float, default=None,
-                    help="Override SBC/MSB boost_factor (default 1.5; sweep ablation).")
+                    help="Override SBC/MSB boost_factor (paper default 1.8, from configs/default.yaml).")
     ap.add_argument("--image-margin-thresh", type=float, default=None,
                     help="SBC v2 image-margin guard: skip PMI when image-conditioned top-token margin exceeds this (0=off).")
     args = ap.parse_args()
