@@ -4,7 +4,7 @@ exposing the subset of the ``LlavaWrapper`` interface that the H diagnostic
 ``prefill`` / ``decode_step`` / ``logp_spans`` / ``tokenizer``.
 
 InternVL3 is the third architecture family of the paper's breadth check: its
-vision encoder is InternViT, not a CLIP-derived tower.
+vision encoder is InternViT (the LLaVA and Qwen backbones use their own ViTs).
 
 Image handling: InternVL's processor tiles large images into up to 12
 448x448 crops plus a thumbnail by default. We disable tiling
