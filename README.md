@@ -94,7 +94,7 @@ cost table.
 | `--method`          | Paper                                                            |
 |---------------------|------------------------------------------------------------------|
 | `baseline_greedy` (POPE, MME) / `baseline` (CHAIR) | Greedy baseline. In POPE/MME, `baseline` is the *sampling* baseline (MME sampling-protocol table) |
-| `vcd`               | VCD with direct sampling as in the VCD paper (CHAIR, POPE; POPE averaged over 5 runs) |
+| `vcd`               | VCD with direct sampling as in the VCD paper (CHAIR, POPE; POPE: mean of 5 runs on LLaVA, 1 run on Qwen) |
 | `vcd_greedy`        | VCD under greedy decoding (MME table)                            |
 | `opera`             | OPERA, greedy adaptation: over-trust penalty only, beam retrospection omitted |
 | `aif`               | AIF, reproduced from the paper (selected mask ratio capped at 0.5) |
