@@ -15,9 +15,16 @@ preprocessing, exactly as for LLaVA / Qwen, so the leave-one-segment-out
 protocol is unchanged; only the model-side resolution differs (like LLaVA-1.5,
 which also sees a single fixed-size square view).
 
-The MSB actuator (visual-token boosting) is not implemented for this family:
-the paper evaluates the decoder on the two 7B backbones only, and the
-diagnostic uses forward passes alone.
+MSB actuator (added for the camera-ready third-family decoding run):
+``visual_grid`` returns the LLM-side token grid (448/14 = 32x32 InternViT
+patches -> pixel-shuffle x0.5 -> 16x16 = 256 tokens, flattened row-major, see
+``InternVLModel.pixel_shuffle``), and ``prefill`` / ``decode_step`` accept the
+4-D additive boost masks built by ``ours_v4._build_boost_mask`` /
+``_build_step_boost_mask``. InternVL's language model is Qwen2 with 1-D RoPE
+positions derived from ``cache_position`` (not from the mask), and
+``transformers.masking_utils`` passes a 4-D mask through unchanged, so -- unlike
+Qwen2.5-VL's M-RoPE -- no explicit position ids are needed: the same mask is
+added to the pre-softmax scores of every layer / head (eager attention).
 """
 
 from __future__ import annotations
@@ -66,6 +73,14 @@ class InternVLWrapper:
         self.tokenizer = self.processor.tokenizer
         self.image_token_id = int(self.tokenizer.convert_tokens_to_ids(
             self.processor.image_token))
+        cfg = self.model.config
+        vc = cfg.vision_config
+        img = vc.image_size[0] if isinstance(vc.image_size, (list, tuple)) \
+            else vc.image_size
+        pch = vc.patch_size[0] if isinstance(vc.patch_size, (list, tuple)) \
+            else vc.patch_size
+        side = int(round(int(img) // int(pch) * float(cfg.downsample_ratio)))
+        self.grid_h = self.grid_w = side                     # 16 for 448/14
 
     # ------------------------------------------------------------------
     # input preparation
@@ -94,10 +109,26 @@ class InternVLWrapper:
         return (input_ids[0] == self.image_token_id).nonzero(
             as_tuple=True)[0].tolist()
 
-    def visual_grid(self, input_ids: Optional[torch.Tensor] = None):
-        raise NotImplementedError(
-            "MSB (visual-token boosting) is not implemented for InternVL; "
-            "this wrapper supports the H diagnostic only.")
+    @property
+    def num_image_tokens(self) -> int:
+        return self.grid_h * self.grid_w
+
+    def expand_image_tokens(self, input_ids: torch.Tensor) -> torch.Tensor:
+        """The processor already expands ``<IMG_CONTEXT>``; no-op (parity)."""
+        return input_ids
+
+    def visual_grid(self, input_ids: Optional[torch.Tensor] = None
+                    ) -> Tuple[int, int]:
+        """(grid_h, grid_w) of the LLM-side visual-token grid. Tiling is
+        disabled, so every image is one 448x448 tile -> fixed 16x16 grid,
+        row-major (pixel_shuffle keeps (row, col) order)."""
+        if input_ids is not None:
+            n = len(self.visual_token_positions(input_ids))
+            if n != self.grid_h * self.grid_w:
+                raise RuntimeError(
+                    f"expected {self.grid_h * self.grid_w} image tokens, "
+                    f"got {n} (tiling must stay disabled)")
+        return (self.grid_h, self.grid_w)
 
     # ------------------------------------------------------------------
     # raw forward helpers (positional signature == LlavaWrapper)
@@ -106,9 +137,11 @@ class InternVLWrapper:
     def prefill(self, input_ids: torch.Tensor, pixel_values: torch.Tensor,
                 attention_mask: Optional[torch.Tensor] = None,
                 output_attentions: bool = False, **_ignore) -> PrefillOutput:
+        # A 4-D additive mask (MSB boost) is forwarded as-is: masking_utils
+        # returns 4-D masks unchanged and eager attention adds it to the
+        # scores of every layer / head. Cast to the model dtype for safety.
         if attention_mask is not None and attention_mask.dim() == 4:
-            raise NotImplementedError(
-                "4-D boost masks (MSB) are not supported for InternVL.")
+            attention_mask = attention_mask.to(self.dtype)
         out = self.model(input_ids=input_ids, pixel_values=pixel_values,
                          attention_mask=attention_mask, use_cache=True,
                          output_attentions=output_attentions,
@@ -123,9 +156,11 @@ class InternVLWrapper:
     @torch.no_grad()
     def decode_step(self, last_token: torch.Tensor, past_key_values,
                     attention_mask: Optional[torch.Tensor] = None):
+        # A 4-D additive mask (MSB boost) is forwarded as-is: masking_utils
+        # returns 4-D masks unchanged and eager attention adds it to the
+        # scores of every layer / head. Cast to the model dtype for safety.
         if attention_mask is not None and attention_mask.dim() == 4:
-            raise NotImplementedError(
-                "4-D boost masks (MSB) are not supported for InternVL.")
+            attention_mask = attention_mask.to(self.dtype)
         out = self.model(input_ids=last_token, past_key_values=past_key_values,
                          attention_mask=attention_mask, use_cache=True,
                          return_dict=True)

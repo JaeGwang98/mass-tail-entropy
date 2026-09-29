@@ -172,11 +172,12 @@ from this release. The SAM *diagnostic* (H distribution) can:
 
 ## Raw model outputs
 
-The per-sample outputs and summaries behind the paper's tables (18 MB zip, no
+The per-sample outputs and summaries behind the paper's tables (zip, no
 images; exceptions are listed in its `README.md`) are attached to the
-[`v1.0-camera-ready` release](https://github.com/JaeGwang98/mass-tail-entropy/releases/tag/v1.0-camera-ready)
+[`v1.1-camera-ready` release](https://github.com/JaeGwang98/mass-tail-entropy/releases/tag/v1.1-camera-ready)
 as `mass-tail-entropy-raw-outputs.zip`. Its `README.md` maps each paper
-table to the run directories that produced it.
+table to the run directories that produced it, including the InternVL3-8B
+decoding runs (App. H.1 of the paper).
 
 ## Hyperparameters (paper defaults)
 
